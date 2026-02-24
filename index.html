@@ -384,7 +384,13 @@
   window.firebaseAuth = auth;
   window.firebaseProvider = provider;
   
+  // Export Firestore functions ra global để script thường có thể sử dụng
+  window.fbDoc = doc;
+  window.fbSetDoc = setDoc;
+  window.fbGetDoc = getDoc;
+  
   console.log('🔥 Firebase initialized successfully');
+  console.log('📦 Firestore functions exported to window.fbDoc, window.fbSetDoc, window.fbGetDoc');
   
   // Auth state observer
   onAuthStateChanged(auth, (user) => {
@@ -627,7 +633,7 @@ function deleteItem(id) {
   }
 }
 
-// ========== CLOUD SYNC FUNCTIONS ==========
+// ========== CLOUD SYNC FUNCTIONS - ĐÃ SỬA LỖI ==========
 window.syncToCloud = async function() {
   if (!window.currentUser) {
     alert('Vui lòng đăng nhập trước khi đồng bộ!');
@@ -642,7 +648,9 @@ window.syncToCloud = async function() {
     
     const db = window.firebaseDb;
     const userId = window.currentUser.uid;
-    const docRef = doc(db, 'grammar_data', userId);
+    
+    // SỬ DỤNG fbDoc ĐÃ EXPORT TỪ MODULE
+    const docRef = window.fbDoc(db, 'grammar_data', userId);
     
     // Prepare data for cloud
     const cloudData = {
@@ -652,7 +660,8 @@ window.syncToCloud = async function() {
       userEmail: window.currentUser.email
     };
     
-    await setDoc(docRef, cloudData);
+    // SỬ DỤNG fbSetDoc ĐÃ EXPORT
+    await window.fbSetDoc(docRef, cloudData);
     
     window.lastSyncTime = new Date().toISOString();
     save();
@@ -687,8 +696,12 @@ window.syncFromCloud = async function() {
     
     const db = window.firebaseDb;
     const userId = window.currentUser.uid;
-    const docRef = doc(db, 'grammar_data', userId);
-    const docSnap = await getDoc(docRef);
+    
+    // SỬ DỤNG fbDoc ĐÃ EXPORT
+    const docRef = window.fbDoc(db, 'grammar_data', userId);
+    
+    // SỬ DỤNG fbGetDoc ĐÃ EXPORT
+    const docSnap = await window.fbGetDoc(docRef);
     
     if (docSnap.exists()) {
       const cloudData = docSnap.data();
