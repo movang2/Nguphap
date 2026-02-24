@@ -291,15 +291,15 @@
       <span id="cloudStatus" class="cloud-status offline">⏳ Đang kết nối...</span>
       <img id="userAvatar" class="avatar" src="" alt="" style="display:none;">
       <span id="userName" style="display:none;"></span>
-      <button id="loginBtn" class="btn-login" onclick="loginWithGoogle()">
+      <button id="loginBtn" class="btn-login" onclick="window.loginWithGoogle()">
         <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" style="width:18px; height:18px;">
         Đăng nhập với Google
       </button>
-      <button id="logoutBtn" class="btn-logout" onclick="logout()" style="display:none;">Đăng xuất</button>
+      <button id="logoutBtn" class="btn-logout" onclick="window.logout()" style="display:none;">Đăng xuất</button>
     </div>
   </h1>
   <div class="toolbar">
-    <input id="search" placeholder="Tìm kiếm nhanh nội dung...">
+    <input type="text" id="search" placeholder="Tìm kiếm nhanh nội dung...">
     
     <div class="toggle-container">
       <label class="toggle-switch">
@@ -313,8 +313,8 @@
     <button class="btn-txt" onclick="document.getElementById('txtInput').click()">📄 Nhập TXT</button>
     <button class="btn-export" onclick="exportData()">📤 Xuất JSON</button>
     <button class="btn-import" onclick="document.getElementById('jsonInput').click()">📥 Khôi phục JSON</button>
-    <button class="btn-sync" onclick="syncFromCloud()" id="syncFromBtn" disabled>☁️ Tải từ Cloud</button>
-    <button class="btn-sync" onclick="syncToCloud()" id="syncToBtn" disabled>⬆️ Đẩy lên Cloud</button>
+    <button class="btn-sync" id="syncFromBtn" onclick="syncFromCloud()" disabled>☁️ Tải từ Cloud</button>
+    <button class="btn-sync" id="syncToBtn" onclick="syncToCloud()" disabled>⬆️ Đẩy lên Cloud</button>
     <button class="btn-clear" onclick="clearAllData()">🗑️ Xóa tất cả</button>
     
     <input type="file" id="txtInput" accept=".txt" hidden>
@@ -345,17 +345,17 @@
       <span id="lastSyncTime" class="last-sync">Chưa đồng bộ</span>
     </div>
     <div class="sync-btn-group">
-      <button onclick="autoSync()" style="padding:5px 10px; background:#3498db; color:white; border:none; border-radius:5px; cursor:pointer;" id="autoSyncBtn" disabled>🔄 Auto Sync</button>
+      <button onclick="autoSync()" id="autoSyncBtn" style="padding:5px 10px; background:#3498db; color:white; border:none; border-radius:5px; cursor:pointer;" disabled>🔄 Auto Sync</button>
     </div>
   </div>
 </main>
 
-<!-- Firebase SDKs -->
+<!-- Firebase SDKs - SỬ DỤNG PHIÊN BẢN 9.6.1 ỔN ĐỊNH -->
 <script type="module">
-  // Import Firebase
-  import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js';
-  import { getFirestore, doc, setDoc, getDoc } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
-  import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js';
+  // Import Firebase - dùng version 9.6.1 (ổn định nhất)
+  import { initializeApp } from 'https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js';
+  import { getFirestore, doc, setDoc, getDoc } from 'https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js';
+  import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js';
 
   // Firebase configuration
   const firebaseConfig = {
@@ -372,6 +372,11 @@
   const db = getFirestore(app);
   const auth = getAuth(app);
   const provider = new GoogleAuthProvider();
+  
+  // Cấu hình thêm cho provider
+  provider.setCustomParameters({
+    prompt: 'select_account'
+  });
   
   // Make Firebase available globally
   window.firebaseApp = app;
@@ -412,8 +417,8 @@
       cloudStatus.innerHTML = '✅ Đã đăng nhập';
       
       // Auto sync on login if no data
-      if (items.length === 0) {
-        setTimeout(() => syncFromCloud(), 1000);
+      if (window.items && window.items.length === 0) {
+        setTimeout(() => window.syncFromCloud(), 1000);
       }
     } else {
       // User is signed out
@@ -436,18 +441,64 @@
       cloudStatus.innerHTML = '❌ Chưa đăng nhập';
     }
   });
+  
+  // Định nghĩa hàm login ở global scope
+  window.loginWithGoogle = async function() {
+    try {
+      console.log('🚀 Bắt đầu đăng nhập...');
+      const auth = window.firebaseAuth;
+      const provider = window.firebaseProvider;
+      
+      // Kiểm tra xem có đang chạy ở file:// không
+      if (window.location.protocol === 'file:') {
+        alert('❌ Không thể đăng nhập khi chạy ở chế độ file://\n\nVui lòng:\n1. Upload lên GitHub Pages\n2. Hoặc dùng Live Server trong VS Code\n3. Hoặc deploy lên Firebase Hosting');
+        return;
+      }
+      
+      const result = await signInWithPopup(auth, provider);
+      console.log('✅ Đăng nhập thành công:', result.user.displayName);
+    } catch (error) {
+      console.error('❌ Lỗi đăng nhập:', error);
+      
+      // Xử lý lỗi cụ thể
+      let errorMessage = error.message;
+      if (error.code === 'auth/popup-blocked') {
+        errorMessage = 'Trình duyệt đã chặn popup. Vui lòng cho phép popup cho trang này.';
+      } else if (error.code === 'auth/unauthorized-domain') {
+        errorMessage = 'Domain chưa được ủy quyền. Vui lòng thêm domain này vào Firebase Console:\n\n' + 
+                      window.location.origin + '\n\n' +
+                      '👉 Authentication → Settings → Authorized domains';
+      }
+      
+      alert('❌ Đăng nhập thất bại: ' + errorMessage);
+    }
+  };
+
+  window.logout = async function() {
+    try {
+      const auth = window.firebaseAuth;
+      await signOut(auth);
+      console.log('✅ Đăng xuất thành công');
+    } catch (error) {
+      console.error('❌ Lỗi đăng xuất:', error);
+      alert('❌ Đăng xuất thất bại: ' + error.message);
+    }
+  };
 </script>
 
 <script>
 // ========== MAIN APPLICATION CODE ==========
-let items = JSON.parse(localStorage.getItem('korean_pro_data')) || [];
-let searchMode = JSON.parse(localStorage.getItem('korean_search_mode')) || false;
-let lastSyncTime = localStorage.getItem('korean_last_sync') || null;
+window.items = JSON.parse(localStorage.getItem('korean_pro_data')) || [];
+window.searchMode = JSON.parse(localStorage.getItem('korean_search_mode')) || false;
+window.lastSyncTime = localStorage.getItem('korean_last_sync') || null;
+
+// Khởi tạo items cho Firebase sử dụng
+const items = window.items;
 
 function save() {
-  localStorage.setItem('korean_pro_data', JSON.stringify(items));
-  localStorage.setItem('korean_search_mode', JSON.stringify(searchMode));
-  if (lastSyncTime) localStorage.setItem('korean_last_sync', lastSyncTime);
+  localStorage.setItem('korean_pro_data', JSON.stringify(window.items));
+  localStorage.setItem('korean_search_mode', JSON.stringify(window.searchMode));
+  if (window.lastSyncTime) localStorage.setItem('korean_last_sync', window.lastSyncTime);
   updateStatus();
 }
 
@@ -457,17 +508,17 @@ function updateStatus() {
   const itemCount = document.getElementById('itemCount');
   const lastSyncEl = document.getElementById('lastSyncTime');
   
-  if (searchToggle) searchToggle.checked = searchMode;
+  if (searchToggle) searchToggle.checked = window.searchMode;
   if (searchStatus) {
-    searchStatus.textContent = searchMode ? "BẬT" : "TẮT";
-    searchStatus.className = searchMode ? "status-on" : "status-off";
+    searchStatus.textContent = window.searchMode ? "BẬT" : "TẮT";
+    searchStatus.className = window.searchMode ? "status-on" : "status-off";
   }
   
-  if (itemCount) itemCount.textContent = items.length;
+  if (itemCount) itemCount.textContent = window.items.length;
   
   if (lastSyncEl) {
-    if (lastSyncTime) {
-      const date = new Date(lastSyncTime);
+    if (window.lastSyncTime) {
+      const date = new Date(window.lastSyncTime);
       lastSyncEl.textContent = `Đồng bộ lần cuối: ${date.toLocaleString('vi-VN')}`;
     } else {
       lastSyncEl.textContent = 'Chưa đồng bộ';
@@ -475,38 +526,15 @@ function updateStatus() {
   }
 }
 
-// ========== AUTH FUNCTIONS ==========
-async function loginWithGoogle() {
-  try {
-    const auth = window.firebaseAuth;
-    const provider = window.firebaseProvider;
-    const result = await signInWithPopup(auth, provider);
-    console.log('Login success:', result.user.displayName);
-  } catch (error) {
-    console.error('Login error:', error);
-    alert('❌ Đăng nhập thất bại: ' + error.message);
-  }
-}
-
-async function logout() {
-  try {
-    const auth = window.firebaseAuth;
-    await signOut(auth);
-    console.log('Logout success');
-  } catch (error) {
-    console.error('Logout error:', error);
-  }
-}
-
 function toggleSearchMode() {
-  searchMode = !searchMode;
+  window.searchMode = !window.searchMode;
   save();
   updateStatus();
   render();
 }
 
 function searchGrammar(grammar) {
-  if (!searchMode || !grammar.trim()) return;
+  if (!window.searchMode || !grammar.trim()) return;
   const searchQuery = encodeURIComponent(`ý nghĩa ngữ pháp "${grammar}" là gì `);
   window.open(`https://www.google.com/search?q=${searchQuery}`, '_blank');
 }
@@ -518,18 +546,18 @@ function render() {
   
   list.innerHTML = '';
 
-  const filteredItems = items.filter(it => 
+  const filteredItems = window.items.filter(it => 
     `${it.title} ${it.meaning} ${it.example} ${it.note}`.toLowerCase().includes(q)
   );
 
   filteredItems.forEach(it => {
     const tr = document.createElement('tr');
     
-    const grammarClass = searchMode ? 
+    const grammarClass = window.searchMode ? 
       'editable col-grammar searchable' : 
       'editable col-grammar';
     
-    const grammarClick = searchMode ? 
+    const grammarClick = window.searchMode ? 
       `onclick="searchGrammar('${it.title.replace(/'/g, "\\'")}')"` : 
       '';
     
@@ -572,7 +600,7 @@ function render() {
 }
 
 function update(id, key, val) {
-  const it = items.find(i => i.id === id);
+  const it = window.items.find(i => i.id === id);
   if (it) { 
     it[key] = val; 
     save(); 
@@ -580,7 +608,7 @@ function update(id, key, val) {
 }
 
 function addItem() {
-  items.unshift({ 
+  window.items.unshift({ 
     id: Date.now().toString() + Math.random().toString(36).substr(2, 5), 
     title: 'Ngữ pháp mới', 
     meaning: 'Ý nghĩa', 
@@ -593,21 +621,20 @@ function addItem() {
 
 function deleteItem(id) {
   if (confirm('Bạn có chắc muốn xóa ngữ pháp này?')) {
-    items = items.filter(i => i.id !== id);
+    window.items = window.items.filter(i => i.id !== id);
     save(); 
     render();
   }
 }
 
 // ========== CLOUD SYNC FUNCTIONS ==========
-async function syncToCloud() {
+window.syncToCloud = async function() {
   if (!window.currentUser) {
     alert('Vui lòng đăng nhập trước khi đồng bộ!');
     return;
   }
   
   const cloudStatus = document.getElementById('cloudStatus');
-  const originalStatus = cloudStatus.innerHTML;
   
   try {
     cloudStatus.className = 'cloud-status syncing';
@@ -619,7 +646,7 @@ async function syncToCloud() {
     
     // Prepare data for cloud
     const cloudData = {
-      items: items,
+      items: window.items,
       lastUpdated: new Date().toISOString(),
       version: '1.0',
       userEmail: window.currentUser.email
@@ -627,7 +654,7 @@ async function syncToCloud() {
     
     await setDoc(docRef, cloudData);
     
-    lastSyncTime = new Date().toISOString();
+    window.lastSyncTime = new Date().toISOString();
     save();
     
     cloudStatus.className = 'cloud-status online';
@@ -637,16 +664,16 @@ async function syncToCloud() {
       cloudStatus.innerHTML = '✅ Đã đăng nhập';
     }, 2000);
     
-    alert(`✅ Đã đồng bộ ${items.length} mục lên Cloud thành công!`);
+    alert(`✅ Đã đồng bộ ${window.items.length} mục lên Cloud thành công!`);
   } catch (error) {
     console.error('Sync error:', error);
     cloudStatus.className = 'cloud-status offline';
     cloudStatus.innerHTML = '❌ Lỗi đồng bộ';
     alert(`❌ Lỗi khi đồng bộ lên Cloud: ${error.message}`);
   }
-}
+};
 
-async function syncFromCloud() {
+window.syncFromCloud = async function() {
   if (!window.currentUser) {
     alert('Vui lòng đăng nhập trước khi đồng bộ!');
     return;
@@ -668,15 +695,15 @@ async function syncFromCloud() {
       
       if (cloudData.items && Array.isArray(cloudData.items)) {
         // Confirm before replacing
-        if (items.length > 0) {
-          if (!confirm(`Bạn có ${items.length} mục ở local. Bạn có muốn THAY THẾ bằng dữ liệu từ Cloud (${cloudData.items.length} mục)?`)) {
+        if (window.items.length > 0) {
+          if (!confirm(`Bạn có ${window.items.length} mục ở local. Bạn có muốn THAY THẾ bằng dữ liệu từ Cloud (${cloudData.items.length} mục)?`)) {
             cloudStatus.className = 'cloud-status online';
             cloudStatus.innerHTML = '✅ Đã đăng nhập';
             return;
           }
         }
         
-        items = cloudData.items.map(item => ({
+        window.items = cloudData.items.map(item => ({
           id: item.id || (Date.now() + Math.random()).toString(),
           title: item.title || '',
           meaning: item.meaning || '',
@@ -684,7 +711,7 @@ async function syncFromCloud() {
           note: item.note || ''
         }));
         
-        lastSyncTime = cloudData.lastUpdated || new Date().toISOString();
+        window.lastSyncTime = cloudData.lastUpdated || new Date().toISOString();
         save();
         render();
         
@@ -695,7 +722,7 @@ async function syncFromCloud() {
           cloudStatus.innerHTML = '✅ Đã đăng nhập';
         }, 2000);
         
-        alert(`✅ Đã tải ${items.length} mục từ Cloud thành công!`);
+        alert(`✅ Đã tải ${window.items.length} mục từ Cloud thành công!`);
       } else {
         alert('Không tìm thấy dữ liệu ngữ pháp trên Cloud.');
         cloudStatus.className = 'cloud-status online';
@@ -704,7 +731,7 @@ async function syncFromCloud() {
     } else {
       // No data in cloud, initialize empty
       if (confirm('Chưa có dữ liệu trên Cloud. Bạn muốn tạo dữ liệu mới trên Cloud?')) {
-        await syncToCloud();
+        await window.syncToCloud();
       } else {
         cloudStatus.className = 'cloud-status online';
         cloudStatus.innerHTML = '✅ Đã đăng nhập';
@@ -716,19 +743,19 @@ async function syncFromCloud() {
     cloudStatus.innerHTML = '❌ Lỗi kết nối';
     alert(`❌ Lỗi khi tải từ Cloud: ${error.message}`);
   }
-}
+};
 
-function autoSync() {
-  if (items.length > 0) {
-    syncToCloud();
+window.autoSync = function() {
+  if (window.items.length > 0) {
+    window.syncToCloud();
   } else {
-    syncFromCloud();
+    window.syncFromCloud();
   }
-}
+};
 
 function clearAllData() {
   if (confirm('⚠️ CẢNH BÁO: Bạn có chắc muốn XÓA TOÀN BỘ dữ liệu local?\n\nHành động này không thể hoàn tác!')) {
-    items = [];
+    window.items = [];
     save();
     render();
     alert('✅ Đã xóa toàn bộ dữ liệu local.');
@@ -785,7 +812,7 @@ document.getElementById('txtInput').onchange = function(e) {
       }
     });
 
-    items = [...newItems, ...items];
+    window.items = [...newItems, ...window.items];
     save(); 
     render();
     alert(`Đã nạp thành công ${newItems.length} ngữ pháp từ file TXT!`);
@@ -812,7 +839,7 @@ document.getElementById('jsonInput').onchange = function(e) {
         throw new Error('File JSON không đúng định dạng. Cần một mảng dữ liệu.');
       }
       
-      items = jsonData.map(item => ({
+      window.items = jsonData.map(item => ({
         id: item.id || (Date.now() + Math.random()).toString(),
         title: item.title || '',
         meaning: item.meaning || '',
@@ -822,7 +849,7 @@ document.getElementById('jsonInput').onchange = function(e) {
       
       save();
       render();
-      alert(`✅ Đã khôi phục thành công ${items.length} mục ngữ pháp từ file JSON!`);
+      alert(`✅ Đã khôi phục thành công ${window.items.length} mục ngữ pháp từ file JSON!`);
     } catch (error) {
       alert(`❌ Lỗi khi đọc file JSON: ${error.message}`);
     }
@@ -838,7 +865,7 @@ function exportData() {
                    now.getHours() + now.getMinutes() + now.getSeconds();
   const filename = `korean_grammar_backup_${timestamp}.json`;
   
-  const dataStr = JSON.stringify(items, null, 2);
+  const dataStr = JSON.stringify(window.items, null, 2);
   const blob = new Blob([dataStr], {type: 'application/json'});
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
@@ -870,7 +897,7 @@ document.addEventListener('keydown', function(e) {
   if (e.ctrlKey && e.key === 's') {
     e.preventDefault();
     if (window.currentUser) {
-      autoSync();
+      window.autoSync();
     }
   }
 });
