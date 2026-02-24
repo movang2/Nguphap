@@ -1,0 +1,879 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Học Tiếng Hàn Pro - Google Login + Cloud Sync</title>
+  <style>
+    :root {
+      --primary: #4b7bec;
+      --secondary: #f39c12;
+      --success: #2ecc71;
+      --danger: #e74c3c;
+      --warning: #f1c40f;
+      --bg: #f4f6fa;
+      --text: #2f3640;
+    }
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+    header {
+      position: sticky;
+      top: 0;
+      background: #fff;
+      padding: 15px;
+      box-shadow: 0 2px 10px rgba(0,0,0,.1);
+      z-index: 100;
+    }
+    h1 { 
+      font-size: 22px; 
+      margin: 0 0 15px; 
+      text-align: center; 
+      color: var(--primary); 
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .user-info {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 14px;
+    }
+    .avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      object-fit: cover;
+    }
+    .btn-login {
+      background: #4285f4;
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 20px;
+      cursor: pointer;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 14px;
+    }
+    .btn-logout {
+      background: #f1f3f4;
+      color: #3c4043;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 20px;
+      cursor: pointer;
+      font-weight: 500;
+      font-size: 14px;
+    }
+    .cloud-status {
+      font-size: 14px;
+      padding: 4px 12px;
+      border-radius: 20px;
+      background: #f0f0f0;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .cloud-status.online { background: #d4edda; color: #155724; }
+    .cloud-status.offline { background: #f8d7da; color: #721c24; }
+    .cloud-status.syncing { background: #fff3cd; color: #856404; }
+    
+    .toolbar { 
+      display: flex; 
+      gap: 10px; 
+      max-width: 1200px; 
+      margin: 0 auto; 
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    #search { 
+      flex: 2; 
+      min-width: 200px;
+      padding: 12px; 
+      border: 2px solid #eee; 
+      border-radius: 10px;
+      outline: none;
+      transition: border 0.3s;
+    }
+    #search:focus { border-color: var(--primary); }
+    
+    .toggle-container {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-right: 5px;
+    }
+    .toggle-switch {
+      position: relative;
+      display: inline-block;
+      width: 50px;
+      height: 24px;
+    }
+    .toggle-switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+    .toggle-slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: #ccc;
+      transition: .4s;
+      border-radius: 24px;
+    }
+    .toggle-slider:before {
+      position: absolute;
+      content: "";
+      height: 16px;
+      width: 16px;
+      left: 4px;
+      bottom: 4px;
+      background-color: white;
+      transition: .4s;
+      border-radius: 50%;
+    }
+    input:checked + .toggle-slider {
+      background-color: var(--success);
+    }
+    input:checked + .toggle-slider:before {
+      transform: translateX(26px);
+    }
+    .toggle-label {
+      font-size: 13px;
+      font-weight: 500;
+      color: #555;
+    }
+    
+    .toolbar button { 
+      padding: 10px 18px; 
+      border: none; 
+      border-radius: 10px; 
+      color: white; 
+      cursor: pointer; 
+      font-weight: 600;
+      transition: all 0.2s;
+      white-space: nowrap;
+    }
+    .toolbar button:hover { opacity: 0.9; transform: translateY(-2px); }
+    .toolbar button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      transform: none;
+    }
+    .btn-add { background: var(--primary); }
+    .btn-txt { background: var(--secondary); }
+    .btn-export { background: #718093; }
+    .btn-import { background: var(--success); }
+    .btn-sync { background: #9b59b6; }
+    .btn-clear { background: var(--danger); }
+
+    main { padding: 20px; max-width: 1200px; margin: 0 auto; }
+    .table-container {
+      background: #fff;
+      border-radius: 15px;
+      overflow-x: auto;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 900px;
+    }
+    th { 
+      background: #f8f9fa; 
+      padding: 18px; 
+      text-align: left;
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      border-bottom: 2px solid #eee;
+    }
+    td { padding: 15px; border-bottom: 1px solid #f1f1f1; vertical-align: top; }
+    
+    .editable {
+      padding: 8px;
+      border-radius: 6px;
+      min-height: 24px;
+      outline: none;
+      cursor: text;
+      transition: background 0.2s;
+    }
+    .editable:hover { background: #f9f9f9; }
+    .editable:focus { background: #f0f7ff; box-shadow: inset 0 0 0 1px var(--primary); }
+    
+    .col-grammar { 
+      font-weight: 800; 
+      color: var(--primary); 
+      font-size: 16px; 
+    }
+    .col-grammar.searchable {
+      cursor: pointer;
+      position: relative;
+    }
+    .col-grammar.searchable:hover {
+      text-decoration: underline;
+      background: #e8f4ff !important;
+    }
+    .col-grammar.searchable:hover::after {
+      content: "🔍";
+      position: absolute;
+      right: 5px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 12px;
+      opacity: 0.7;
+    }
+    
+    .col-meaning { font-weight: 500; }
+    .col-example { font-style: italic; color: #57606f; line-height: 1.6; }
+    .col-note { color: #eb4d4b; font-size: 13px; font-weight: 500; }
+
+    .btn-delete {
+      background: none;
+      border: none;
+      color: #ccc;
+      cursor: pointer;
+      font-size: 20px;
+      transition: color 0.2s;
+    }
+    .btn-delete:hover { color: var(--danger); }
+    
+    .status-bar {
+      margin-top: 15px;
+      padding: 15px;
+      background: #fff;
+      border-radius: 10px;
+      font-size: 13px;
+      color: #666;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    }
+    .status-left { display: flex; gap: 20px; flex-wrap: wrap; }
+    .status-on { color: var(--success); font-weight: bold; }
+    .status-off { color: #999; }
+    .last-sync { color: #888; font-style: italic; }
+    .sync-btn-group { display: flex; gap: 5px; }
+
+    @media (max-width: 768px) {
+      .toolbar { flex-direction: column; align-items: stretch; }
+      .toggle-container { justify-content: center; margin: 10px 0; }
+      .toolbar button { width: 100%; }
+      #search { width: 100%; min-width: auto; }
+      .status-bar { flex-direction: column; align-items: stretch; }
+      .sync-btn-group { justify-content: center; }
+      h1 { flex-direction: column; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>
+    📘 Quản Lý Ngữ Pháp Tiếng Hàn Pro
+    <div class="user-info" id="userInfo">
+      <span id="cloudStatus" class="cloud-status offline">⏳ Đang kết nối...</span>
+      <img id="userAvatar" class="avatar" src="" alt="" style="display:none;">
+      <span id="userName" style="display:none;"></span>
+      <button id="loginBtn" class="btn-login" onclick="loginWithGoogle()">
+        <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" style="width:18px; height:18px;">
+        Đăng nhập với Google
+      </button>
+      <button id="logoutBtn" class="btn-logout" onclick="logout()" style="display:none;">Đăng xuất</button>
+    </div>
+  </h1>
+  <div class="toolbar">
+    <input id="search" placeholder="Tìm kiếm nhanh nội dung...">
+    
+    <div class="toggle-container">
+      <label class="toggle-switch">
+        <input type="checkbox" id="searchToggle" onclick="toggleSearchMode()">
+        <span class="toggle-slider"></span>
+      </label>
+      <span class="toggle-label">Tra cứu chi tiết</span>
+    </div>
+    
+    <button class="btn-add" onclick="addItem()">➕ Thêm dòng</button>
+    <button class="btn-txt" onclick="document.getElementById('txtInput').click()">📄 Nhập TXT</button>
+    <button class="btn-export" onclick="exportData()">📤 Xuất JSON</button>
+    <button class="btn-import" onclick="document.getElementById('jsonInput').click()">📥 Khôi phục JSON</button>
+    <button class="btn-sync" onclick="syncFromCloud()" id="syncFromBtn" disabled>☁️ Tải từ Cloud</button>
+    <button class="btn-sync" onclick="syncToCloud()" id="syncToBtn" disabled>⬆️ Đẩy lên Cloud</button>
+    <button class="btn-clear" onclick="clearAllData()">🗑️ Xóa tất cả</button>
+    
+    <input type="file" id="txtInput" accept=".txt" hidden>
+    <input type="file" id="jsonInput" accept=".json" hidden>
+  </div>
+</header>
+
+<main>
+  <div class="table-container">
+    <table>
+      <thead>
+        <tr>
+          <th style="width: 20%">Ngữ pháp</th>
+          <th style="width: 20%">Ý nghĩa</th>
+          <th style="width: 35%">Ví dụ</th>
+          <th style="width: 20%">Lưu ý</th>
+          <th style="width: 5%"></th>
+        </tr>
+      </thead>
+      <tbody id="list"></tbody>
+    </table>
+  </div>
+  
+  <div class="status-bar">
+    <div class="status-left">
+      <span>Chế độ tra cứu: <span id="searchStatus" class="status-off">TẮT</span></span>
+      <span>Số lượng ngữ pháp: <span id="itemCount">0</span></span>
+      <span id="lastSyncTime" class="last-sync">Chưa đồng bộ</span>
+    </div>
+    <div class="sync-btn-group">
+      <button onclick="autoSync()" style="padding:5px 10px; background:#3498db; color:white; border:none; border-radius:5px; cursor:pointer;" id="autoSyncBtn" disabled>🔄 Auto Sync</button>
+    </div>
+  </div>
+</main>
+
+<!-- Firebase SDKs -->
+<script type="module">
+  // Import Firebase
+  import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js';
+  import { getFirestore, doc, setDoc, getDoc } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
+  import { getAuth, signInWithPopup, GoogleAuthProvider, signOut, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js';
+
+  // Firebase configuration
+  const firebaseConfig = {
+    apiKey: "AIzaSyAkExBGVbdaRN8ZkcWLguWrPFO9drymMkc",
+    authDomain: "korean-grammar-pro.firebaseapp.com",
+    projectId: "korean-grammar-pro",
+    storageBucket: "korean-grammar-pro.firebasestorage.app",
+    messagingSenderId: "964654892462",
+    appId: "1:964654892462:web:794124df7effdf2280f43f"
+  };
+
+  // Initialize Firebase
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+  const auth = getAuth(app);
+  const provider = new GoogleAuthProvider();
+  
+  // Make Firebase available globally
+  window.firebaseApp = app;
+  window.firebaseDb = db;
+  window.firebaseAuth = auth;
+  window.firebaseProvider = provider;
+  
+  console.log('🔥 Firebase initialized successfully');
+  
+  // Auth state observer
+  onAuthStateChanged(auth, (user) => {
+    if (user) {
+      // User is signed in
+      window.currentUser = {
+        uid: user.uid,
+        email: user.email,
+        displayName: user.displayName,
+        photoURL: user.photoURL
+      };
+      
+      // Update UI
+      document.getElementById('loginBtn').style.display = 'none';
+      document.getElementById('logoutBtn').style.display = 'inline-flex';
+      document.getElementById('userAvatar').style.display = 'inline-block';
+      document.getElementById('userName').style.display = 'inline-block';
+      
+      document.getElementById('userAvatar').src = user.photoURL || 'https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg';
+      document.getElementById('userName').textContent = user.displayName || user.email;
+      
+      // Enable sync buttons
+      document.getElementById('syncFromBtn').disabled = false;
+      document.getElementById('syncToBtn').disabled = false;
+      document.getElementById('autoSyncBtn').disabled = false;
+      
+      // Update cloud status
+      const cloudStatus = document.getElementById('cloudStatus');
+      cloudStatus.className = 'cloud-status online';
+      cloudStatus.innerHTML = '✅ Đã đăng nhập';
+      
+      // Auto sync on login if no data
+      if (items.length === 0) {
+        setTimeout(() => syncFromCloud(), 1000);
+      }
+    } else {
+      // User is signed out
+      window.currentUser = null;
+      
+      // Update UI
+      document.getElementById('loginBtn').style.display = 'inline-flex';
+      document.getElementById('logoutBtn').style.display = 'none';
+      document.getElementById('userAvatar').style.display = 'none';
+      document.getElementById('userName').style.display = 'none';
+      
+      // Disable sync buttons
+      document.getElementById('syncFromBtn').disabled = true;
+      document.getElementById('syncToBtn').disabled = true;
+      document.getElementById('autoSyncBtn').disabled = true;
+      
+      // Update cloud status
+      const cloudStatus = document.getElementById('cloudStatus');
+      cloudStatus.className = 'cloud-status offline';
+      cloudStatus.innerHTML = '❌ Chưa đăng nhập';
+    }
+  });
+</script>
+
+<script>
+// ========== MAIN APPLICATION CODE ==========
+let items = JSON.parse(localStorage.getItem('korean_pro_data')) || [];
+let searchMode = JSON.parse(localStorage.getItem('korean_search_mode')) || false;
+let lastSyncTime = localStorage.getItem('korean_last_sync') || null;
+
+function save() {
+  localStorage.setItem('korean_pro_data', JSON.stringify(items));
+  localStorage.setItem('korean_search_mode', JSON.stringify(searchMode));
+  if (lastSyncTime) localStorage.setItem('korean_last_sync', lastSyncTime);
+  updateStatus();
+}
+
+function updateStatus() {
+  const searchToggle = document.getElementById('searchToggle');
+  const searchStatus = document.getElementById('searchStatus');
+  const itemCount = document.getElementById('itemCount');
+  const lastSyncEl = document.getElementById('lastSyncTime');
+  
+  if (searchToggle) searchToggle.checked = searchMode;
+  if (searchStatus) {
+    searchStatus.textContent = searchMode ? "BẬT" : "TẮT";
+    searchStatus.className = searchMode ? "status-on" : "status-off";
+  }
+  
+  if (itemCount) itemCount.textContent = items.length;
+  
+  if (lastSyncEl) {
+    if (lastSyncTime) {
+      const date = new Date(lastSyncTime);
+      lastSyncEl.textContent = `Đồng bộ lần cuối: ${date.toLocaleString('vi-VN')}`;
+    } else {
+      lastSyncEl.textContent = 'Chưa đồng bộ';
+    }
+  }
+}
+
+// ========== AUTH FUNCTIONS ==========
+async function loginWithGoogle() {
+  try {
+    const auth = window.firebaseAuth;
+    const provider = window.firebaseProvider;
+    const result = await signInWithPopup(auth, provider);
+    console.log('Login success:', result.user.displayName);
+  } catch (error) {
+    console.error('Login error:', error);
+    alert('❌ Đăng nhập thất bại: ' + error.message);
+  }
+}
+
+async function logout() {
+  try {
+    const auth = window.firebaseAuth;
+    await signOut(auth);
+    console.log('Logout success');
+  } catch (error) {
+    console.error('Logout error:', error);
+  }
+}
+
+function toggleSearchMode() {
+  searchMode = !searchMode;
+  save();
+  updateStatus();
+  render();
+}
+
+function searchGrammar(grammar) {
+  if (!searchMode || !grammar.trim()) return;
+  const searchQuery = encodeURIComponent(`ý nghĩa ngữ pháp "${grammar}" là gì `);
+  window.open(`https://www.google.com/search?q=${searchQuery}`, '_blank');
+}
+
+function render() {
+  const list = document.getElementById('list');
+  const q = document.getElementById('search').value.toLowerCase();
+  if (!list) return;
+  
+  list.innerHTML = '';
+
+  const filteredItems = items.filter(it => 
+    `${it.title} ${it.meaning} ${it.example} ${it.note}`.toLowerCase().includes(q)
+  );
+
+  filteredItems.forEach(it => {
+    const tr = document.createElement('tr');
+    
+    const grammarClass = searchMode ? 
+      'editable col-grammar searchable' : 
+      'editable col-grammar';
+    
+    const grammarClick = searchMode ? 
+      `onclick="searchGrammar('${it.title.replace(/'/g, "\\'")}')"` : 
+      '';
+    
+    tr.innerHTML = `
+      <td>
+        <div class="${grammarClass}" 
+             contenteditable="true" 
+             onblur="update('${it.id}','title',this.innerText)"
+             ${grammarClick}>
+          ${it.title}
+        </div>
+      </td>
+      <td>
+        <div class="editable col-meaning" 
+             contenteditable="true" 
+             onblur="update('${it.id}','meaning',this.innerText)">
+          ${it.meaning}
+        </div>
+      </td>
+      <td>
+        <div class="editable col-example" 
+             contenteditable="true" 
+             onblur="update('${it.id}','example',this.innerText)">
+          ${it.example}
+        </div>
+      </td>
+      <td>
+        <div class="editable col-note" 
+             contenteditable="true" 
+             onblur="update('${it.id}','note',this.innerText)">
+          ${it.note}
+        </div>
+      </td>
+      <td>
+        <button class="btn-delete" onclick="deleteItem('${it.id}')">✕</button>
+      </td>
+    `;
+    list.appendChild(tr);
+  });
+}
+
+function update(id, key, val) {
+  const it = items.find(i => i.id === id);
+  if (it) { 
+    it[key] = val; 
+    save(); 
+  }
+}
+
+function addItem() {
+  items.unshift({ 
+    id: Date.now().toString() + Math.random().toString(36).substr(2, 5), 
+    title: 'Ngữ pháp mới', 
+    meaning: 'Ý nghĩa', 
+    example: 'Ví dụ', 
+    note: '' 
+  });
+  save(); 
+  render();
+}
+
+function deleteItem(id) {
+  if (confirm('Bạn có chắc muốn xóa ngữ pháp này?')) {
+    items = items.filter(i => i.id !== id);
+    save(); 
+    render();
+  }
+}
+
+// ========== CLOUD SYNC FUNCTIONS ==========
+async function syncToCloud() {
+  if (!window.currentUser) {
+    alert('Vui lòng đăng nhập trước khi đồng bộ!');
+    return;
+  }
+  
+  const cloudStatus = document.getElementById('cloudStatus');
+  const originalStatus = cloudStatus.innerHTML;
+  
+  try {
+    cloudStatus.className = 'cloud-status syncing';
+    cloudStatus.innerHTML = '⏳ Đang đồng bộ lên...';
+    
+    const db = window.firebaseDb;
+    const userId = window.currentUser.uid;
+    const docRef = doc(db, 'grammar_data', userId);
+    
+    // Prepare data for cloud
+    const cloudData = {
+      items: items,
+      lastUpdated: new Date().toISOString(),
+      version: '1.0',
+      userEmail: window.currentUser.email
+    };
+    
+    await setDoc(docRef, cloudData);
+    
+    lastSyncTime = new Date().toISOString();
+    save();
+    
+    cloudStatus.className = 'cloud-status online';
+    cloudStatus.innerHTML = '✅ Đã đồng bộ';
+    
+    setTimeout(() => {
+      cloudStatus.innerHTML = '✅ Đã đăng nhập';
+    }, 2000);
+    
+    alert(`✅ Đã đồng bộ ${items.length} mục lên Cloud thành công!`);
+  } catch (error) {
+    console.error('Sync error:', error);
+    cloudStatus.className = 'cloud-status offline';
+    cloudStatus.innerHTML = '❌ Lỗi đồng bộ';
+    alert(`❌ Lỗi khi đồng bộ lên Cloud: ${error.message}`);
+  }
+}
+
+async function syncFromCloud() {
+  if (!window.currentUser) {
+    alert('Vui lòng đăng nhập trước khi đồng bộ!');
+    return;
+  }
+  
+  const cloudStatus = document.getElementById('cloudStatus');
+  
+  try {
+    cloudStatus.className = 'cloud-status syncing';
+    cloudStatus.innerHTML = '⏳ Đang tải từ Cloud...';
+    
+    const db = window.firebaseDb;
+    const userId = window.currentUser.uid;
+    const docRef = doc(db, 'grammar_data', userId);
+    const docSnap = await getDoc(docRef);
+    
+    if (docSnap.exists()) {
+      const cloudData = docSnap.data();
+      
+      if (cloudData.items && Array.isArray(cloudData.items)) {
+        // Confirm before replacing
+        if (items.length > 0) {
+          if (!confirm(`Bạn có ${items.length} mục ở local. Bạn có muốn THAY THẾ bằng dữ liệu từ Cloud (${cloudData.items.length} mục)?`)) {
+            cloudStatus.className = 'cloud-status online';
+            cloudStatus.innerHTML = '✅ Đã đăng nhập';
+            return;
+          }
+        }
+        
+        items = cloudData.items.map(item => ({
+          id: item.id || (Date.now() + Math.random()).toString(),
+          title: item.title || '',
+          meaning: item.meaning || '',
+          example: item.example || '',
+          note: item.note || ''
+        }));
+        
+        lastSyncTime = cloudData.lastUpdated || new Date().toISOString();
+        save();
+        render();
+        
+        cloudStatus.className = 'cloud-status online';
+        cloudStatus.innerHTML = '✅ Đã tải thành công';
+        
+        setTimeout(() => {
+          cloudStatus.innerHTML = '✅ Đã đăng nhập';
+        }, 2000);
+        
+        alert(`✅ Đã tải ${items.length} mục từ Cloud thành công!`);
+      } else {
+        alert('Không tìm thấy dữ liệu ngữ pháp trên Cloud.');
+        cloudStatus.className = 'cloud-status online';
+        cloudStatus.innerHTML = '✅ Đã đăng nhập';
+      }
+    } else {
+      // No data in cloud, initialize empty
+      if (confirm('Chưa có dữ liệu trên Cloud. Bạn muốn tạo dữ liệu mới trên Cloud?')) {
+        await syncToCloud();
+      } else {
+        cloudStatus.className = 'cloud-status online';
+        cloudStatus.innerHTML = '✅ Đã đăng nhập';
+      }
+    }
+  } catch (error) {
+    console.error('Sync error:', error);
+    cloudStatus.className = 'cloud-status offline';
+    cloudStatus.innerHTML = '❌ Lỗi kết nối';
+    alert(`❌ Lỗi khi tải từ Cloud: ${error.message}`);
+  }
+}
+
+function autoSync() {
+  if (items.length > 0) {
+    syncToCloud();
+  } else {
+    syncFromCloud();
+  }
+}
+
+function clearAllData() {
+  if (confirm('⚠️ CẢNH BÁO: Bạn có chắc muốn XÓA TOÀN BỘ dữ liệu local?\n\nHành động này không thể hoàn tác!')) {
+    items = [];
+    save();
+    render();
+    alert('✅ Đã xóa toàn bộ dữ liệu local.');
+  }
+}
+
+// ========== FILE HANDLING ==========
+document.getElementById('txtInput').onchange = function(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = function(event) {
+    const text = event.target.result;
+    const blocks = text.split(/\n\s*\n/);
+    const newItems = [];
+
+    blocks.forEach(block => {
+      const b = block.trim();
+      if (!b) return;
+
+      let title = "";
+      let meaning = "";
+      let example = "";
+      let note = "";
+
+      const grammarMatch = b.match(/\*([^*]+)\*/);
+      if (grammarMatch) {
+        title = grammarMatch[1].trim();
+        
+        const afterFirstStar = b.split('*')[2] || b.split('*')[1];
+        const meaningMatch = afterFirstStar ? afterFirstStar.match(/\(([^)]+)\)/) : null;
+        if (meaningMatch) meaning = meaningMatch[1].trim();
+      }
+
+      const lines = b.split('\n');
+      lines.forEach(line => {
+        const l = line.trim();
+        if (l.toLowerCase().startsWith('ví dụ:')) {
+          example = l.replace(/ví dụ:/i, '').trim();
+        } else if (l.toLowerCase().startsWith('lưu ý:')) {
+          note = l.replace(/lưu ý:/i, '').trim();
+        }
+      });
+
+      if (title) {
+        newItems.push({
+          id: (Date.now() + Math.random()).toString(),
+          title: title,
+          meaning: meaning,
+          example: example,
+          note: note
+        });
+      }
+    });
+
+    items = [...newItems, ...items];
+    save(); 
+    render();
+    alert(`Đã nạp thành công ${newItems.length} ngữ pháp từ file TXT!`);
+  };
+  reader.readAsText(file);
+  this.value = '';
+};
+
+document.getElementById('jsonInput').onchange = function(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  if (!confirm('⚠️ CẢNH BÁO: Hành động này sẽ THAY THẾ toàn bộ dữ liệu hiện tại!\n\nBạn có muốn tiếp tục?')) {
+    this.value = '';
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.onload = function(event) {
+    try {
+      const jsonData = JSON.parse(event.target.result);
+      
+      if (!Array.isArray(jsonData)) {
+        throw new Error('File JSON không đúng định dạng. Cần một mảng dữ liệu.');
+      }
+      
+      items = jsonData.map(item => ({
+        id: item.id || (Date.now() + Math.random()).toString(),
+        title: item.title || '',
+        meaning: item.meaning || '',
+        example: item.example || '',
+        note: item.note || ''
+      }));
+      
+      save();
+      render();
+      alert(`✅ Đã khôi phục thành công ${items.length} mục ngữ pháp từ file JSON!`);
+    } catch (error) {
+      alert(`❌ Lỗi khi đọc file JSON: ${error.message}`);
+    }
+  };
+  
+  reader.readAsText(file);
+  this.value = '';
+};
+
+function exportData() {
+  const now = new Date();
+  const timestamp = now.toISOString().split('T')[0] + '_' + 
+                   now.getHours() + now.getMinutes() + now.getSeconds();
+  const filename = `korean_grammar_backup_${timestamp}.json`;
+  
+  const dataStr = JSON.stringify(items, null, 2);
+  const blob = new Blob([dataStr], {type: 'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  
+  alert(`✅ Đã xuất file: ${filename}`);
+}
+
+// ========== INITIALIZATION ==========
+document.getElementById('search').addEventListener('input', render);
+window.onload = function() {
+  render();
+  updateStatus();
+};
+
+// Keyboard shortcuts
+document.addEventListener('keydown', function(e) {
+  if (e.ctrlKey && e.key === 'f') {
+    e.preventDefault();
+    document.getElementById('search').focus();
+  }
+  if (e.ctrlKey && e.key === 'n') {
+    e.preventDefault();
+    addItem();
+  }
+  if (e.ctrlKey && e.key === 's') {
+    e.preventDefault();
+    if (window.currentUser) {
+      autoSync();
+    }
+  }
+});
+</script>
+</body>
+</html>
